@@ -50,57 +50,7 @@ class Painter():
         :param referenceImage:
         :return: list of control points
         """
-        ref_color = referenceImage[y, x, :] # rgb
-        self.stroke_color = ref_color
-
-        canvas_color = self.canvas[y, x, :]
         start_pts = [(y, x)] # Stroke starts here
-        last_dy, last_dx = 0,0
-
-        length = int(brush_size * self.len_stroke)
-        imageHeight, imageWidth, channel = referenceImage.shape
-
-        for i in range(self.maxLength):
-            # Off boundaries check
-            x = max(min(x, imageWidth-1), 0)
-            y = max(min(y, imageHeight-1), 0)
-
-            # canvas at this point is already properly colored (diff bt canvas and ref is less than ref and stroke)
-            if (i > self.minLength) and (np.sqrt(ref_color**2 - canvas_color**2).mean() < np.sqrt(ref_color**2 -
-                                                                                           self.stroke_color**2).mean()):
-                return start_pts
-
-            # (2) Calculate gradients and its magnitude
-            gx, gy = np.sum(self.grad_x[y, x]), np.sum(self.grad_y[y, x])
-            g_mag = np.sqrt(gx**2 + gy**2)
-
-            # Compute normal
-            dx, dy = -gy, gx
-
-            # if gradient is small, return control points
-            if length*g_mag < 1:
-                return start_pts
-
-            # if necessary, reverse direction
-            if i > 0 and (last_dx * dx + last_dy * dy) < 0:
-                dx, dy = -dx, -dy
-
-            # filter the stroke direction
-            dx = (1-self.filter_fac)*last_dx+self.filter_fac*dx
-            dy = (1-self.filter_fac)*last_dy+self.filter_fac*dy
-
-            # Compute new magnitude
-            g_mag = np.sqrt(dx**2 + dy**2)
-
-            # New points - "The distance between ctrl points is equal to the brush radius"
-            x = int(x + length * dx/g_mag)
-            y = int(y + length * dy/g_mag)
-
-            start_pts.append((y, x))  # [H,W]
-
-            # Update last_dx, last_dy
-            last_dx = dx
-            last_dy = dy
 
         return start_pts
 
