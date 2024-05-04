@@ -12,10 +12,15 @@ class Painter():
         self.style = style
 
     def calculate_difference(self, canvas, referenceImage):
-        r_diff = canvas[:, :, 0]-referenceImage[:, :, 0]
-        g_diff = canvas[:, :, 1]-referenceImage[:, :, 1]
-        b_diff = canvas[:, :, 2]-referenceImage[:, :, 2]
-        return np.sqrt(r_diff**2 + g_diff**2 + b_diff**2)
+        return np.sqrt(np.sum((canvas - referenceImage)**2, axis=-1))
+    
+    def normalize(self, img):
+        """
+        Shifts image from [0-255] to [0-1]
+        :param img:
+        :return:
+        """
+        return (img - np.min(img)) / np.ptp(img)
     
     def makeSplineStroke(self, R, y0, x0, referenceImage):
         K = [(y0, x0)] # a new stroke with radius R
@@ -53,8 +58,10 @@ class Painter():
             dx = dx/(dx**2+dy**2)**0.5
             dy = dy/(dx**2+dy**2)**0.5
             x, y = int(x+R*dx), int(y+y*dy)
-            x = max(min(x, W-1), 0)
-            y = max(min(y, H-1), 0)
+
+            if x<0 or x>W-1 or y<0 or y>H-1:
+                return K
+            
             lastDx, lastDy = dx, dy
 
             K.append((y, x))
@@ -105,7 +112,7 @@ class Painter():
     def blend(self, canvas, alpha, stroke_color):
         """
         All arrays are in the range [0-1]
-        :param canvas: [3, H, W]
+        :param canvas: [H, W, 3]
         :param alpha: white background alpha of shape [H,W]
         :return:
         """
@@ -128,40 +135,14 @@ class Painter():
         # create a pointwise difference image
         D = self.calculate_difference(canvas, referenceImage)
 
-        grid = max(int(self.style.grid_size * R), 1) #grid!=0
+        grid = max(int(self.style.grid_size * R), 1) # grid!=0
         imageHeight, imageWidth, _ = canvas.shape
 
         # convert to luminance 
-        referenceImage_float = referenceImage.astype(np.float32)
-        red = referenceImage_float[:, :, 0]
-        green = referenceImage_float[:, :, 1]
-        blue = referenceImage_float[:, :, 2]
-        luminance = 0.30 * red + 0.59 * green + 0.11 * blue #luminance in float32
-        # luminance = np.clip(Y, 0, 255).astype(np.uint8)
+        weights = np.array([0.30, 0.59, 0.11], dtype=np.float32)
+        luminance = np.clip(np.sum(referenceImage.astype(np.float32) * weights, axis=2), 0, 255).astype(np.uint8)
         self.grad_x = cv2.Sobel(luminance, cv2.CV_64F, 1, 0, ksize=3)    
         self.grad_y = cv2.Sobel(luminance, cv2.CV_64F, 0, 1, ksize=3) 
-
-        # for x in range(half, imageWidth-half+1, grid):
-        #     for y in range(half, imageHeight-half+1, grid):
-        #         # sum the error near (x,y)
-        #         patch_x_start = max(0, x-half)
-        #         patch_x_end = min(x+half, imageWidth)
-        #         patch_y_start = max(0, y-half)
-        #         patch_y_end = min(y+half, imageHeight)
-        #         # patch_ref = referenceImage[patch_y_start:patch_y_end, patch_x_start:patch_x_end, :]
-        #         # patch_canvas = canvas[patch_y_start:patch_y_end, patch_x_start:patch_x_end, :]
-
-        #         D_patch = D[patch_y_start:patch_y_end, patch_x_start:patch_x_end, :]
-        #         D_patch_mean = np.mean(D_patch, axis=2) # D_patch_mean (H*W)
-        #         areaError = np.mean(D_patch_mean)
-
-        #         if(areaError<self.style.threshold):
-        #             # find the largest error point
-        #             y_patch_1, x_patch_1 = np.unravel_index(np.argmax(D_patch_mean), D_patch_mean.shape)
-        #             y_1 = y_patch_1 + patch_y_start
-        #             x_1 = x_patch_1 + patch_x_start
-        #             s = self.makeStroke(brush_size, x_1, y_1, referenceImage)
-        #             S.append(s)
 
         for x in range(0, imageWidth, grid):
             for y in range(0, imageHeight, grid):
@@ -171,6 +152,8 @@ class Painter():
                     y1, x1 = np.unravel_index(np.argmax(patch), patch.shape)
                     s = self.makeSplineStroke(R, y1+y, x1+x, referenceImage)
                     S[tuple(s)] = tuple(self.stroke_color)
+                    # print(s)
+                    # break
 
         keys = list(S.keys())
         random.shuffle(keys)
@@ -188,6 +171,7 @@ class Painter():
         """
         img_path = self.style.img_path
         sourceImg = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB) #rgb, H*W*C
+        sourceImg = self.normalize(sourceImg)
 
         # a new constant color image
         # now the constant color is 0/black
@@ -200,7 +184,7 @@ class Painter():
             sigma = int(self.style.f_sigma * R)
             # apply Gaussian blur
             # the size of kernel must be odd
-            if sigma%2 == 0:
+            if sigma % 2 == 0:
                 sigma += 1
             referenceImage = cv2.GaussianBlur(sourceImg, (sigma, sigma), sigma)
             # referenceImage_bgr = cv2.cvtColor(referenceImage, cv2.COLOR_RGB2BGR)
@@ -211,9 +195,10 @@ class Painter():
             self.paintLayer(self.canvas, referenceImage, R)
             name = os.path.basename(self.style.img_path)[:-4]
             out_path = os.path.join(self.style.out_dir, f'{name}_level_{R}.jpeg')
-            canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas), cv2.COLOR_RGB2BGR)
+            canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas*255), cv2.COLOR_RGB2BGR)
             cv2.imwrite(out_path, canvas_bgr)
-            print(canvas_bgr)
+            # print("canvas")
+            # print(canvas_bgr)
             break
         
 
