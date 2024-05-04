@@ -1,6 +1,5 @@
 import argparse
 import cv2
-from networkx import difference
 import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -8,12 +7,12 @@ parser.add_argument('--img_path', type=str, default='images/tomato83.jpg')
 parser.add_argument('--brushes', type=list, default=[8,4,2])
 parser.add_argument('--f_sigma', type=float, default=1)
 parser.add_argument('--threshold', type=float, default=0.05)
-parser.add_argument('--len_stroke', type=float, default=1)
-parser.add_argument('--maxLength', type=int, default=16)
-parser.add_argument('--minLength', type=int, default=4)
-# parser.add_argument('--resize', type=list, default=None)
-# parser.add_argument('--blur_fac', type=float, default=.5)
-# parser.add_argument('--grid_fac', type=float, default=1)
+# parser.add_argument('--len_stroke', type=float, default=1)
+# parser.add_argument('--maxLength', type=int, default=16)
+# parser.add_argument('--minLength', type=int, default=4)
+# # parser.add_argument('--resize', type=list, default=None)
+# # parser.add_argument('--blur_fac', type=float, default=.5)
+# # parser.add_argument('--grid_fac', type=float, default=1)
 
 parser.add_argument('--filter_fac', type=float, default=1)
 args = parser.parse_args()
@@ -25,11 +24,11 @@ class Painter():
         self.args = args
         self.img_path = args.img_path
         self.f_sigma = args.f_sigma
-        self.T = args.threshold
-        self.len_stroke = args.len_stroke
-        self.maxLength = args.maxLength
-        self.minLength = args.minLength
-        self.filter_fac = args.filter_fac
+        self.T = args.threshold 
+        # self.len_stroke = args.len_stroke
+        # self.maxLength = args.maxLength
+        # self.minLength = args.minLength
+        # self.filter_fac = args.filter_fac
         self.paint(self.img_path, self.brushs)
 
     def calculate_difference(self, canvas, referenceImage):
