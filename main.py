@@ -6,58 +6,50 @@ import os
 from style import Style
 
 class Painter():
-    """
-    """
     def __init__(self, style):
         self.style = style
 
     def calculate_difference(self, canvas, referenceImage):
         return np.sqrt(np.sum((canvas - referenceImage)**2, axis=-1))
     
-    def normalize(self, img):
-        """
-        Shifts image from [0-255] to [0-1]
-        :param img:
-        :return:
-        """
-        return (img - np.min(img)) / np.ptp(img)
-    
     def makeSplineStroke(self, R, y0, x0, referenceImage):
+        self.stroke_color = referenceImage[y0, x0]
         K = [(y0, x0)] # a new stroke with radius R
         x, y = x0, y0
         lastDx, lastDy = 0, 0
         H, W, _ = referenceImage.shape
 
-        ref_color = referenceImage[y0, x0] # R,G,B
-        self.stroke_color = ref_color
-        canvas_color = self.canvas[y0, x0]
-        flag = np.linalg.norm(ref_color - canvas_color) < np.linalg.norm(ref_color - self.stroke_color)
-
         for i in range(1, self.style.max_stroke_len+1):
-            if i>self.style.min_stroke_len and flag:
+            if i > self.style.min_stroke_len and (np.sum(abs(referenceImage[y, x] - self.canvas[y, x])) < 
+                                                  np.sum(abs(referenceImage[y, x] - self.stroke_color))):
                 return K
         
-            # get unit vector of gradient
-            gx, gy = np.sum(self.grad_x[y][x]), np.sum(self.grad_y[y][x])
+            # get gradients
+            gx, gy = self.grad_x[y][x], self.grad_y[y][x]
+            gMag = (gx**2 + gy**2)**0.5
 
             #detect vanishing gradient
-            if gx == 0 or gy==0:
+            if gMag == 0:
                 return K
+            
+            # get unit vector of gradient
+            gx = gx/gMag
+            gy = gy/gMag
     
             # normal vector
             dx, dy = -gy, gx
 
             # if necessary, reverse direction
-            if lastDx*dx + lastDy*dy < 0:
+            if lastDx * dx + lastDy * dy < 0:
                 dx, dy = -dx, -dy
             
             # filter the stroke direction
             fc = self.style.curvature_filter
             dx =  fc*dx + (1-fc)*lastDx
             dy =  fc*dy + (1-fc)*lastDy
-            dx = dx/(dx**2+dy**2)**0.5
-            dy = dy/(dx**2+dy**2)**0.5
-            x, y = int(x+R*dx), int(y+y*dy)
+            dx = dx/((dx**2+dy**2)**0.5)
+            dy = dy/((dx**2+dy**2)**0.5)
+            x, y = int(x+R*dx), int(y+R*dy)
 
             if x<0 or x>W-1 or y<0 or y>H-1:
                 return K
@@ -68,60 +60,7 @@ class Painter():
 
         return K
     
-    def bspline(self, cv, n=100, degree=3, periodic=False):
-        """ Calculate n samples on a bspline
-        https://stackoverflow.com/questions/24612626/b-spline-interpolation-with-python
-            cv :      Array ov control vertices
-            n  :      Number of samples to return
-            degree:   Curve degree
-            periodic: True - Curve is closed
-                      False - Curve is open
-        """
-        # If periodic, extend the point array by count+degree+1
-        cv = np.asarray(cv)
-        count = len(cv)
-        if periodic:
-            factor, fraction = divmod(count + degree + 1, count)
-            cv = np.concatenate((cv,) * factor + (cv[:fraction],))
-            count = len(cv)
-            degree = np.clip(degree, 1, degree)
-        # If opened, prevent degree from exceeding count-1
-        else:
-            degree = np.clip(degree, 1, count - 1)
-        # Calculate knot vector
-        kv = None
-        if periodic:
-            kv = np.arange(0 - degree, count + degree + degree - 1, dtype='int')
-        else:
-            kv = np.concatenate(([0] * degree, np.arange(count - degree + 1), [count - degree] * degree))
-        # Calculate query range
-        u = np.linspace(periodic, (count - degree), n)
-        # Calculate result
-        return np.array(si.splev(u, (kv, cv.T, degree))).T
 
-    def draw_spline(self, K, r):
-        alpha = np.zeros([self.canvas.shape[0], self.canvas.shape[1]]).astype('float32') # (H, W)
-        pts = self.bspline(K, n=50, degree=3, periodic=False)
-        t = 1.
-        for p in pts:
-            x = int(p[1])
-            y = int(p[0])
-            cv2.circle(alpha, (x,y), r, t, -1)
-        return 1 - alpha
-    
-    def blend(self, canvas, alpha, stroke_color):
-        """
-        All arrays are in the range [0-1]
-        :param canvas: [H, W, 3]
-        :param alpha: white background alpha of shape [H,W]
-        :return:
-        """
-        # stroke_color = self.stroke_color # [r,g,b]
-        color = np.expand_dims(stroke_color, axis=(0, 1))
-        alpha = np.expand_dims(alpha, axis=-1) #(H, W, 1)
-        stroke_c = (1 - alpha) * color  # (H, W, 3)
-        canvas = canvas * alpha + stroke_c 
-        return canvas
 
     def paintLayer(self, canvas, referenceImage, R):
         """
@@ -140,10 +79,10 @@ class Painter():
 
         # convert to luminance 
         weights = np.array([0.30, 0.59, 0.11], dtype=np.float32)
-        luminance = np.clip(np.sum(referenceImage.astype(np.float32) * weights, axis=2), 0, 255).astype(np.uint8)
+        luminance = np.clip(np.sum(referenceImage.astype(np.float32) * weights, axis=2), 0, 255)
         self.grad_x = cv2.Sobel(luminance, cv2.CV_64F, 1, 0, ksize=3)    
         self.grad_y = cv2.Sobel(luminance, cv2.CV_64F, 0, 1, ksize=3) 
-
+        
         for x in range(0, imageWidth, grid):
             for y in range(0, imageHeight, grid):
                 patch = D[y:y+grid, x:x+grid]
@@ -152,15 +91,23 @@ class Painter():
                     y1, x1 = np.unravel_index(np.argmax(patch), patch.shape)
                     s = self.makeSplineStroke(R, y1+y, x1+x, referenceImage)
                     S[tuple(s)] = tuple(self.stroke_color)
-                    # print(s)
-                    # break
 
+        # draw strokes in random order
+        self.drawSplineStrokes(S, R, imageHeight, imageWidth)
+
+        return S
+    
+    
+    def drawSplineStrokes(self, S, R, imageHeight, imageWidth):
         keys = list(S.keys())
         random.shuffle(keys)
         for s in keys:
-            alpha = self.draw_spline(list(s), R) 
-            self.canvas = self.blend(self.canvas, alpha, np.array(S[s]))  # (H, W, 3)
-        return S
+            for point in s:
+                for i in range(point[0]-R,point[0]+R):
+                    for j in range(point[1]-R,point[1]+R):
+                        if np.sqrt((i - point[0])**2 + (j - point[1])**2) <= R:
+                            if i>=0 and i<imageHeight and j>=0 and j<imageWidth:
+                                self.canvas[i, j] = S[s]
 
 
     def paint(self):
@@ -170,8 +117,8 @@ class Painter():
         :return:
         """
         img_path = self.style.img_path
-        sourceImg = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB) #rgb, H*W*C
-        sourceImg = self.normalize(sourceImg)
+        # sourceImg = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB) #rgb, H*W*C
+        sourceImg = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)/255.0 #rgb, H*W*C
 
         # a new constant color image
         # now the constant color is 0/black
@@ -183,23 +130,16 @@ class Painter():
         for R in brush_sizes:
             sigma = int(self.style.f_sigma * R)
             # apply Gaussian blur
-            # the size of kernel must be odd
-            if sigma % 2 == 0:
-                sigma += 1
-            referenceImage = cv2.GaussianBlur(sourceImg, (sigma, sigma), sigma)
-            # referenceImage_bgr = cv2.cvtColor(referenceImage, cv2.COLOR_RGB2BGR)
-            # out_path = os.path.join(self.style.out_dir, f'referenceImage{R}.jpeg')
-            # cv2.imwrite(out_path, referenceImage_bgr)
-            # break
-            # paint a layer
+            kernel_size = int(np.ceil(sigma)*6+1)
+            referenceImage = cv2.GaussianBlur(sourceImg, (kernel_size, kernel_size), sigma)
             self.paintLayer(self.canvas, referenceImage, R)
             name = os.path.basename(self.style.img_path)[:-4]
             out_path = os.path.join(self.style.out_dir, f'{name}_level_{R}.jpeg')
+            # canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas), cv2.COLOR_RGB2BGR)
             canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas*255), cv2.COLOR_RGB2BGR)
             cv2.imwrite(out_path, canvas_bgr)
-            # print("canvas")
-            # print(canvas_bgr)
-            break
+            print(f'Finish drawing layer level {R}.')
+            # break
         
 
 if __name__ == '__main__':
