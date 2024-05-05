@@ -3,7 +3,7 @@ import numpy as np
 import random
 import scipy.interpolate as si
 import os
-from style import Style, Expressionist, ColoristWash, Pointillist, Cartoon, Abstract
+from style import Style, Impressionist, Expressionist, ColoristWash, Pointillist, Cartoon, Abstract
 import colorsys
 
 class Painter():
@@ -195,17 +195,20 @@ class Painter():
             refImage = cv2.GaussianBlur(sourceImg, (kernel_size, kernel_size), sigma)
 
             self.paintLayer(self.canvas, refImage, R)
-            name = os.path.basename(self.style.img_path)[:-4]
-            out_path = os.path.join(self.style.out_dir, f'{name}_level_{R}.jpg')
+            img_name = os.path.basename(self.style.img_path)[:-4]
+            out_dir = os.path.join(self.style.out_dir, img_name)
+            if not os.path.exists(out_dir):
+                os.makedirs(out_dir)
+            out_path = os.path.join(out_dir, f'{self.style.name}_level_{R}.jpg')
             canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas), cv2.COLOR_RGB2BGR)
             # canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas*255), cv2.COLOR_RGB2BGR)
             cv2.imwrite(out_path, canvas_bgr)
-            print(f'Finish drawing {name} at layer level {R}.')
-            # break
+            print(f'Finish drawing {img_name} in {self.style.name} style at layer level {R}.')
         
 
 if __name__ == '__main__':
-    style = Cartoon()
-    Painter(style).paint()
+    styles = {Impressionist(), Expressionist(), ColoristWash(), Pointillist(), Cartoon(), Abstract()}
+    for style in styles:
+        Painter(style).paint()
     
     
