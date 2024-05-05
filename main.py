@@ -3,7 +3,7 @@ import numpy as np
 import random
 import scipy.interpolate as si
 import os
-from style import Style, Expressionist, ColoristWash, Pointillist
+from style import Style, Expressionist, ColoristWash, Pointillist, Cartoon, Abstract
 import colorsys
 
 class Painter():
@@ -110,6 +110,7 @@ class Painter():
                             if i>=0 and i<imageHeight and j>=0 and j<imageWidth:
                                 r, g, b = S[s]
                                 alpha = self.style.alpha
+
                                 # deno = 2*alpha - alpha**2
                                 # r_out = self.canvas[i][j][0]*alpha+r*alpha-self.canvas[i][j][0]*alpha**2
                                 # g_out = self.canvas[i][j][1]*alpha+r*alpha-self.canvas[i][j][1]*alpha**2
@@ -117,16 +118,12 @@ class Painter():
                                 # r_out = min(int(r_out/deno),255)
                                 # g_out = min(int(g_out/deno),255)
                                 # b_out = min(int(b_out/deno),255)
-                                # print(r_out, g_out, b_out)
 
                                 alphaF = alpha + alpha*(1-alpha)
                                 r_out = min(int((r*alpha+self.canvas[i][j][0]*alpha*(1-alpha))/alphaF), 255)
                                 g_out = min(int((g*alpha+self.canvas[i][j][1]*alpha*(1-alpha))/alphaF), 255)
                                 b_out = min(int((b*alpha+self.canvas[i][j][2]*alpha*(1-alpha))/alphaF), 255)
-                                
-                                # r_out = min(int(0.5*self.canvas[i, j][0] + 0.5*r*alpha),255)
-                                # g_out = min(int(0.5*self.canvas[i, j][1] + 0.5*g*alpha),255)
-                                # b_out = min(int(0.5*self.canvas[i, j][2] + 0.5*b*alpha),255)
+
                                 self.canvas[i, j] = r_out, g_out, b_out
 
     def adjustColor(self, color, hfac, hjit, sfac, sjit, bfac, bjit):
@@ -185,7 +182,7 @@ class Painter():
 
         # a new constant color image
         hex_img = self.rgb_to_hex(sourceImg.copy().astype(np.uint32)).reshape((-1,1))
-        canvasColor = self.adjustColor(self.aveColor(hex_img),1,0,2,0,1,0)
+        canvasColor = self.adjustColor(self.aveColor(hex_img),1,0,20,0,1,0)
         self.canvas = np.full(sourceImg.shape, canvasColor, dtype=np.float32)
 
         # paint the canvas from the biggest brush to the smallest brush
@@ -199,7 +196,7 @@ class Painter():
 
             self.paintLayer(self.canvas, refImage, R)
             name = os.path.basename(self.style.img_path)[:-4]
-            out_path = os.path.join(self.style.out_dir, f'{name}_level_{R}.png')
+            out_path = os.path.join(self.style.out_dir, f'{name}_level_{R}.jpg')
             canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas), cv2.COLOR_RGB2BGR)
             # canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas*255), cv2.COLOR_RGB2BGR)
             cv2.imwrite(out_path, canvas_bgr)
@@ -208,7 +205,7 @@ class Painter():
         
 
 if __name__ == '__main__':
-    style = ColoristWash()
+    style = Cartoon()
     Painter(style).paint()
     
     
