@@ -1,7 +1,7 @@
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--img_path', type=str, default='images/lizard1.jpg')
+parser.add_argument('--img_path', type=str, default='images/person1.jpg')
 parser.add_argument('--brushes', type=list, default=[8,4,2])
 parser.add_argument('--f_sigma', type=float, default=0.5)
 parser.add_argument('--threshold', type=float, default=35)
@@ -12,6 +12,7 @@ parser.add_argument('--curvature_filter', type=float, default=1)
 parser.add_argument('--alpha', type=float, default=1)
 parser.add_argument('--hsvjit', type=list, default=[0., 0., 0.])
 parser.add_argument('--rgbjit', type=list, default=[0., 0., 0.])
+parser.add_argument('--adjust_bg', type=bool, default=True)
 parser.add_argument('--out_dir', type=str, default='results')
 args = parser.parse_args()
 
@@ -30,6 +31,7 @@ class Style:
         self.alpha = args.alpha
         self.hsvjit = args.hsvjit
         self.rgbjit = args.rgbjit
+        self.adjust_bg = args.adjust_bg
         self.out_dir = args.out_dir
        
         
@@ -47,6 +49,7 @@ class Impressionist(Style):
         self.alpha = 1.
         self.hsvjit = [0., 0., 0.]
         self.rgbjit = [0., 0., 0.]
+        self.adjust_bg = True
 
 class Expressionist(Style):
     def __init__(self):
@@ -62,6 +65,7 @@ class Expressionist(Style):
         self.alpha = .7
         self.hsvjit = [0., 0., 0.5]
         self.rgbjit = [0., 0., 0.]
+        self.adjust_bg = True
 
 
 class ColoristWash(Style):
@@ -78,13 +82,14 @@ class ColoristWash(Style):
         self.alpha = .5
         self.hsvjit = [0., 0., 0.]
         self.rgbjit = [0.3, 0.3, 0.3]
+        self.adjust_bg = True
 
 
 class Pointillist(Style):
     def __init__(self):
         super().__init__()
         self.name = "Pointillist"
-        self.threshold = 50
+        self.threshold = 25
         self.brush_sizes = [4, 2]
         self.curvature_filter = 1.
         self.f_sigma = .5
@@ -94,6 +99,7 @@ class Pointillist(Style):
         self.alpha = 1.
         self.hsvjit = [0.3, 0., 1.]
         self.rgbjit = [0., 0., 0.]
+        self.adjust_bg = True
 
 class Cartoon(Style):
     def __init__(self):
@@ -109,6 +115,7 @@ class Cartoon(Style):
         self.alpha = 1.
         self.hsvjit = [0., 0.3, 0.]
         self.rgbjit = [0., 0., 0.]
+        self.adjust_bg = True
        
 class Abstract(Style):
     def __init__(self):
@@ -123,4 +130,5 @@ class Abstract(Style):
         self.grid_size = 5.
         self.alpha = .8
         self.hsvjit = [0., 0., 0.]
-        self.rgbjit = [0.2, 0.2, 0.2]
+        self.rgbjit = [0., 0., 0.]
+        self.adjust_bg = False

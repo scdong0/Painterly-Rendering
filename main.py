@@ -182,7 +182,10 @@ class Painter():
         sourceImg = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB) #rgb, H*W*C
 
         # a new constant color image
-        canvasColor = self.adjustColor(self.aveColor(sourceImg),1,0,20,0,1,0)
+        if self.style.adjust_bg:
+            canvasColor = self.adjustColor(self.aveColor(sourceImg),1,0,20,0,1,0)
+        else:
+            canvasColor = self.adjustColor((255, 255, 255),1,0,20,0,1,0)
         self.canvas = np.full(sourceImg.shape, canvasColor, dtype=np.float32)
 
         # paint the canvas from the biggest brush to the smallest brush
@@ -213,7 +216,7 @@ if __name__ == '__main__':
 
     # some styles already created
     styles = {Impressionist(), Expressionist(), ColoristWash(), Pointillist(), Cartoon(), Abstract()}
-
+    styles = {Pointillist(), Abstract()}
     for style in styles:
         Painter(style).paint()
     
