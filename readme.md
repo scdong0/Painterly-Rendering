@@ -24,7 +24,8 @@ conda install scipy
 python main.py [--img_path] [--brushes] [--f_sigma] 
                [--maxLength] [--minLength] [--threshold] 
                [--grid_size] [--curvature_filter] 
-               [--alpha] [--out_dir]
+               [--alpha] [--hsvjit] [--rgbjit] 
+               [adjust_bg] [--out_dir]
 ```
 By default, it will generate a "results" folder within the project directory, which will contain result images for all styles of the image "tomato83.jpg". 
 
