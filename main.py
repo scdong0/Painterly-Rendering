@@ -216,7 +216,6 @@ if __name__ == '__main__':
 
     # some styles already created
     styles = {Impressionist(), Expressionist(), ColoristWash(), Pointillist(), Cartoon(), Abstract()}
-    styles = {Pointillist(), Abstract()}
     for style in styles:
         Painter(style).paint()
     
