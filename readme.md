@@ -8,7 +8,7 @@ Aaron Hertzmann. Painterly Rendering with Curved Brush Strokes of Multiple Sizes
 Thanks to Manuel's python implementation which can be found at [Manuel Rodriguez Ladron de Guevara's github](https://github.com/manuelladron/painterPython)
  
 
-## Install
+## Installation
 ```
 conda install opencv
 conda install numpy
@@ -43,9 +43,9 @@ images: all image samples used in our project
 
 3. paint all strokes in S on the canvas in random order
 
-## Result
-experiment with the poster of〈BORDER: DAY ONE〉by ENHYPEN
-original image: 
+## Results
+Experiment with the poster of〈BORDER: DAY ONE〉by ENHYPEN  
+original image  
 
 <img src= https://github.com/pikapi25/painterly-rendering-python/blob/main/images/enhypen.jpg width=40% />
 
