@@ -25,9 +25,15 @@ python main.py [--img_path] [--brushes] [--f_sigma]
                [--maxLength] [--minLength] [--threshold] 
                [--grid_size] [--curvature_filter] 
                [--alpha] [--hsvjit] [--rgbjit] 
-               [adjust_bg] [--out_dir]
+               [--adjust_bg] [--out_dir]
 ```
 By default, it will generate a "results" folder within the project directory, which will contain result images for all styles of the image "tomato83.jpg". 
+
+## File structure
+
+main.py: python code to implement the paper  
+style.py: classes of styles and parameters that can be adjusted  
+images: all image samples used in our project
 
 
 ## Painting techniques
