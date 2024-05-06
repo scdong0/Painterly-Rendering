@@ -25,34 +25,3 @@ python main.py [--img_path] [--brushes] [--f_sigma]
 ```
 By default, it will generate a "results" folder within the project directory, which will contain result images for all styles of the image "tomato83.jpg". 
 
-## File structure
-
-main.py: python implementation of the paper  
-style.py: classes of styles and parameters that can be adjusted  
-images: all image samples used in our project
-
-
-## Painting techniques
-1. varying the brush size   
-   $R_i = [R_1, R_2, ..., R_n]$
-   for each layer $R_i$,   
-   a. create a reference image by blurring the source image. Blurring: Gaussian kernel of std deviation: $f_{\sigma}R_i$  
-   b. use a subroutine to paint each layer with $R_i$ based on the reference image. Areas that match the source image color within a threshold ($T$) are left unchanged.  
-
-2. creating curved brush strokes  
-
-3. paint all strokes in S on the canvas in random order
-
-## Results
-Experiment with the poster of〈BORDER: DAY ONE〉by ENHYPEN  
-original image  
-
-<img src= https://github.com/pikapi25/painterly-rendering-python/blob/main/images/enhypen.jpg width=40% />
-
-drawings at different layers in Expressionist style 
-
-![image](https://github.com/pikapi25/painterly-rendering-python/blob/main/images/result1.png)
-
-different styles 
-
-![image](https://github.com/pikapi25/painterly-rendering-python/blob/main/images/result2.png)
