@@ -1,7 +1,7 @@
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--img_path', type=str, default='images/person1.jpg')
+parser.add_argument('--img_path', type=str, default='images/tomato83.jpg')
 parser.add_argument('--brushes', type=list, default=[8,4,2])
 parser.add_argument('--f_sigma', type=float, default=0.5)
 parser.add_argument('--threshold', type=float, default=35)

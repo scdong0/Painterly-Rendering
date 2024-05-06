@@ -10,10 +10,6 @@ Thanks to Manuel's python implementation which can be found at [Manuel Rodriguez
 
 ## Install
 ```
-git clone https://github.com/pikapi25/painterly-rendering-python.git
-
-```
-```
 conda install opencv
 conda install numpy
 conda install scipy
@@ -31,7 +27,7 @@ By default, it will generate a "results" folder within the project directory, wh
 
 ## File structure
 
-main.py: python code to implement the paper  
+main.py: python implementation of the paper  
 style.py: classes of styles and parameters that can be adjusted  
 images: all image samples used in our project
 
