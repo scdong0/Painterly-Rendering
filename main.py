@@ -15,7 +15,7 @@ class Painter():
     
     def makeSplineStroke(self, R, y0, x0, refImage):
         self.stroke_color = refImage[y0, x0]
-        K = [(y0, x0)] # a new stroke with radius R
+        K = [(y0, x0)]      # a new stroke with radius R
         x, y = x0, y0
         lastDx, lastDy = 0, 0
         H, W, _ = refImage.shape
@@ -91,6 +91,15 @@ class Painter():
                 if areaError > self.style.threshold:
                     y1, x1 = np.unravel_index(np.argmax(patch), patch.shape)
                     s = self.makeSplineStroke(R, y1+y, x1+x, refImage)
+                    
+                    # add color jitters
+                    hjit, sjit, vjit = self.style.hsvjit
+                    if hjit != 0 or sjit != 0 or vjit != 0:
+                        self.stroke_color = self.adjustColor(self.stroke_color, 1, hjit, 1, sjit, 1, vjit)
+                    rjit, gjit, bjit = self.style.rgbjit
+                    if rjit != 0 or gjit != 0 or bjit != 0:
+                        self.stroke_color = self.addRGBjit(self.stroke_color, rjit, gjit, bjit)
+
                     S[tuple(s)] = tuple(self.stroke_color)
 
         # draw strokes in random order
@@ -109,28 +118,34 @@ class Painter():
                         if np.sqrt((i - point[0])**2 + (j - point[1])**2) <= R:
                             if i>=0 and i<imageHeight and j>=0 and j<imageWidth:
                                 r, g, b = S[s]
+                                alphaB = self.alphaB[i, j]
                                 alpha = self.style.alpha
-
-                                # deno = 2*alpha - alpha**2
-                                # r_out = self.canvas[i][j][0]*alpha+r*alpha-self.canvas[i][j][0]*alpha**2
-                                # g_out = self.canvas[i][j][1]*alpha+r*alpha-self.canvas[i][j][1]*alpha**2
-                                # b_out = self.canvas[i][j][2]*alpha+r*alpha-self.canvas[i][j][2]*alpha**2
-                                # r_out = min(int(r_out/deno),255)
-                                # g_out = min(int(g_out/deno),255)
-                                # b_out = min(int(b_out/deno),255)
-
-                                alphaF = alpha + alpha*(1-alpha)
-                                r_out = min(int((r*alpha+self.canvas[i][j][0]*alpha*(1-alpha))/alphaF), 255)
-                                g_out = min(int((g*alpha+self.canvas[i][j][1]*alpha*(1-alpha))/alphaF), 255)
-                                b_out = min(int((b*alpha+self.canvas[i][j][2]*alpha*(1-alpha))/alphaF), 255)
-
+                                alphaF = alpha + alphaB*(1-alpha)
+                                r_out = min(int((r*alpha+self.canvas[i][j][0]*alphaB*(1-alpha))/alphaF), 255)
+                                g_out = min(int((g*alpha+self.canvas[i][j][1]*alphaB*(1-alpha))/alphaF), 255)
+                                b_out = min(int((b*alpha+self.canvas[i][j][2]*alphaB*(1-alpha))/alphaF), 255)
+                                
+                                self.alphaB[i, j] = alphaF
                                 self.canvas[i, j] = r_out, g_out, b_out
 
+
+    def addRGBjit(self, color, rjit, gjit, bjit):
+        r, g, b = color
+
+        r += int(rjit * (random.random() - 0.5) * 255)
+        g += int(gjit * (random.random() - 0.5) * 255)
+        b += int(bjit * (random.random() - 0.5) * 255)
+
+        r = min(max(r, 0), 255)
+        g = min(max(g, 0), 255)
+        b = min(max(b, 0), 255)
+
+        return r, g, b
+
+    
     def adjustColor(self, color, hfac, hjit, sfac, sjit, bfac, bjit):
         # Extracting RGB components
-        r = (color & 0xFF0000) >> 16
-        g = (color & 0xFF00) >> 8
-        b = color & 0xFF
+        r, g, b = color
 
         # Converting to HSB
         f = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
@@ -146,28 +161,15 @@ class Painter():
         new_color = tuple(int(c * 255) for c in new_color)
         return new_color
     
-    def rgb_to_hex(self, rgb):
-        # hex_color: list of RGB pixels in hex
-        r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
-        hex_rgb = (r << 16) + (g << 8) + b
-        return hex_rgb
 
-
-    def aveColor(self, hex_img):
-        r = 0
-        g = 0
-        b = 0
-
-        for p in hex_img:
-            r += (p >> 16) & 0xFF
-            g += (p >> 8) & 0xFF
-            b += p & 0xFF
-
-        r = min(r, 0xFF)
-        g = min(g, 0xFF)
-        b = min(b, 0xFF)
-
-        return 0xFF000000 | (r << 16) | (g << 8) | b
+    def aveColor(self, img):
+        r = np.mean(img[:, :, 0])
+        g = np.mean(img[:, :, 1])
+        b = np.mean(img[:, :, 2])
+        r = min(int(r), 255)
+        g = min(int(g), 255)
+        b = min(int(b), 255)
+        return r, g, b
     
 
     def paint(self):
@@ -178,22 +180,22 @@ class Painter():
         """
         img_path = self.style.img_path
         sourceImg = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB) #rgb, H*W*C
-        # sourceImg = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)/255.0 #rgb, H*W*C
 
         # a new constant color image
-        hex_img = self.rgb_to_hex(sourceImg.copy().astype(np.uint32)).reshape((-1,1))
-        canvasColor = self.adjustColor(self.aveColor(hex_img),1,0,20,0,1,0)
+        canvasColor = self.adjustColor(self.aveColor(sourceImg),1,0,20,0,1,0)
         self.canvas = np.full(sourceImg.shape, canvasColor, dtype=np.float32)
 
         # paint the canvas from the biggest brush to the smallest brush
         brushes = self.style.brush_sizes
         brush_sizes = sorted(brushes, reverse=True)
+        self.alphaB = np.zeros((sourceImg.shape[0], sourceImg.shape[1]))
         for R in brush_sizes:
             # apply Gaussian blur
             sigma = int(self.style.f_sigma * R)
             kernel_size = int(np.ceil(sigma)*6+1)
             refImage = cv2.GaussianBlur(sourceImg, (kernel_size, kernel_size), sigma)
 
+            # draw
             self.paintLayer(self.canvas, refImage, R)
             img_name = os.path.basename(self.style.img_path)[:-4]
             out_dir = os.path.join(self.style.out_dir, img_name)
@@ -201,13 +203,17 @@ class Painter():
                 os.makedirs(out_dir)
             out_path = os.path.join(out_dir, f'{self.style.name}_level_{R}.jpg')
             canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas), cv2.COLOR_RGB2BGR)
-            # canvas_bgr = cv2.cvtColor(cv2.convertScaleAbs(self.canvas*255), cv2.COLOR_RGB2BGR)
             cv2.imwrite(out_path, canvas_bgr)
             print(f'Finish drawing {img_name} in {self.style.name} style at layer level {R}.')
         
 
 if __name__ == '__main__':
+    # create your own painting style by passing auguments
+    # styles = {Style()}       # uncomment this line if you want to create your own painting style
+
+    # some styles already created
     styles = {Impressionist(), Expressionist(), ColoristWash(), Pointillist(), Cartoon(), Abstract()}
+
     for style in styles:
         Painter(style).paint()
     
